@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    container_name: seagulls-crm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: seagulls_crm
+      POSTGRES_USER: seagulls
+      POSTGRES_PASSWORD: seagulls_crm_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - seagulls_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seagulls -d seagulls_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  seagulls_pgdata:

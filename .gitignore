@@ -1,0 +1,10 @@
+# Seagulls CRM
+backend/.venv/
+backend/**/__pycache__/
+backend/*.db
+backend/.env
+frontend/node_modules/
+frontend/dist/
+.pytest_cache/
+*.pyc
+.DS_Store
