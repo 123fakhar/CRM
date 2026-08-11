@@ -110,13 +110,13 @@ app.include_router(audit.router)
 app.include_router(settings_routes.router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def liveness():
     """Unauthenticated liveness probe for Railway (must not depend on DB)."""
     return JSONResponse({"status": "ok", "app": settings.app_name})
 
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def api_health():
     payload = {
         "status": "ok" if _db_ready else "starting",

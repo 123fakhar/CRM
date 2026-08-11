@@ -28,5 +28,6 @@ COPY --from=frontend-build /frontend/dist ./static
 
 EXPOSE 8000
 
-# Railway injects PORT. Bind to all interfaces so the platform healthcheck can reach us.
-CMD ["sh", "-c", "echo Starting on 0.0.0.0:${PORT:-8000} && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# Railway injects PORT. Bind all interfaces so platform healthchecks can reach us.
+# Keep the command simple — no quote/shell edge cases.
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'
