@@ -26,9 +26,9 @@ RUN pip install -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend-build /frontend/dist ./static
 
-RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
+RUN if [ -f /app/start.sh ]; then sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh; fi
 
 EXPOSE 8000
 
-# Simplest reliable Railway bind: expand $PORT in a shell, listen on all interfaces.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Double-quoted shell form so Railway's $PORT expands. Bind all interfaces.
+CMD ["sh", "-c", "echo SeagullsCRM_listen_0.0.0.0_${PORT:-8000} && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
