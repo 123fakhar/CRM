@@ -107,7 +107,9 @@ python -m app.scripts.migrate_sqlite_to_postgres
 
 ## Deployment
 
-See [docs/DEPLOY.md](docs/DEPLOY.md) for Render, Railway, Docker, and local production steps.
+See [docs/DEPLOY.md](docs/DEPLOY.md) for **Vercel (frontend)**, Railway (API/Postgres), Docker, and local production steps.
+
+**Live frontend (Vercel):** https://seagulls-crm.vercel.app
 
 Quick local production:
 
