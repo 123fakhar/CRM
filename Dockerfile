@@ -26,10 +26,9 @@ RUN pip install -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend-build /frontend/dist ./static
 
-RUN chmod +x /app/start.sh
+RUN sed -i 's/\r$//' /app/start.sh && chmod +x /app/start.sh
 
 EXPOSE 8000
 
-# Explicit sh -c keeps ${PORT} expansion reliable on Railway.
-# Healthchecks must reach 0.0.0.0:$PORT (never 127.0.0.1).
-CMD ["sh", "/app/start.sh"]
+# Simplest reliable Railway bind: expand $PORT in a shell, listen on all interfaces.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

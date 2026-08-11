@@ -3,6 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Force the container start command (overrides any stale Railway UI custom start command).
+startCommand = "sh -c 'exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'"
 # Must match unauthenticated FastAPI route in backend/app/main.py (no DB dependency).
 healthcheckPath = "/health"
 healthcheckTimeout = 300
