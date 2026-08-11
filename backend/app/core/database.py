@@ -7,7 +7,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-connect_args = {"check_same_thread": False} if settings.is_sqlite else {}
+connect_args: dict = {"check_same_thread": False} if settings.is_sqlite else {"connect_timeout": 5}
 engine_kwargs: dict = {"connect_args": connect_args}
 if not settings.is_sqlite:
     engine_kwargs.update(
