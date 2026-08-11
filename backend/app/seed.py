@@ -1,11 +1,14 @@
 """
-Seed/test data — clearly labeled for development only.
-Does not invent real Seagulls business data as production truth.
+Database bootstrap helpers.
+
+- Development/test: optional demo seed (never treated as real company data)
+- Production: only creates an Admin when BOOTSTRAP_ADMIN_* env vars are set
 """
 
 from sqlalchemy.orm import Session
 
 from app.auth.security import hash_password
+from app.core.config import get_settings
 from app.core.constants import UserRole
 from app.models import Agent, Campaign, Closer, User
 from app.services.audit import write_audit
@@ -15,6 +18,49 @@ def seed_if_empty(db: Session) -> None:
     if db.query(User).count() > 0:
         return
 
+    settings = get_settings()
+
+    if settings.environment.lower() == "production":
+        _bootstrap_production_admin(db)
+        return
+
+    _seed_demo_data(db)
+
+
+def _bootstrap_production_admin(db: Session) -> None:
+    settings = get_settings()
+    email = (settings.bootstrap_admin_email or "").strip().lower()
+    password = settings.bootstrap_admin_password or ""
+    name = (settings.bootstrap_admin_name or "System Admin").strip()
+
+    if not email or not password:
+        # Production DB stays empty until bootstrap credentials are provided.
+        return
+
+    if len(password) < 8:
+        raise ValueError("BOOTSTRAP_ADMIN_PASSWORD must be at least 8 characters")
+
+    admin = User(
+        name=name,
+        email=email,
+        password_hash=hash_password(password),
+        role=UserRole.ADMIN.value,
+        active=True,
+    )
+    db.add(admin)
+    db.flush()
+    write_audit(
+        db,
+        user=admin,
+        action="Bootstrapped Admin",
+        entity="User",
+        entity_id=admin.id,
+        new_value=f"Production admin created for {email}",
+    )
+    db.commit()
+
+
+def _seed_demo_data(db: Session) -> None:
     admin = User(
         name="System Admin",
         email="admin@seagullsdemo.com",
@@ -25,7 +71,6 @@ def seed_if_empty(db: Session) -> None:
     db.add(admin)
     db.flush()
 
-    # Demo agents/closers/campaigns — TEST DATA ONLY
     agent_user = User(
         name="Demo Agent",
         email="agent@seagullsdemo.com",

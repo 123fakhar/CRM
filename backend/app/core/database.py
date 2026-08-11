@@ -18,7 +18,7 @@ if not settings.is_sqlite:
         }
     )
 
-engine = create_engine(settings.database_url, **engine_kwargs)
+engine = create_engine(settings.sqlalchemy_database_url, **engine_kwargs)
 
 if settings.is_sqlite:
 

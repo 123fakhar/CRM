@@ -17,5 +17,21 @@ services:
       timeout: 5s
       retries: 10
 
+  web:
+    build: .
+    container_name: seagulls-crm-web
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://seagulls:seagulls_crm_dev@db:5432/seagulls_crm
+      SECRET_KEY: change-me-in-production-seagulls-crm-secret-key
+      CORS_ORIGINS: "*"
+      STATIC_DIR: /app/static
+      PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   seagulls_pgdata:

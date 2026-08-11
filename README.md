@@ -105,9 +105,21 @@ python -m app.scripts.migrate_sqlite_to_postgres
 4. Admin enters Buyer Response + Final Status (+ rejection reason if Rejected)
 5. Dashboard / reports recalculate from the database
 
-## Google Form
+## Deployment
 
-External Google Forms API credentials were **not** available. The CRM sales form implements the required fields. See `docs/GOOGLE_FORM.md` for what remains to connect an external Google Form.
+See [docs/DEPLOY.md](docs/DEPLOY.md) for Render, Railway, Docker, and local production steps.
+
+Quick local production:
+
+```powershell
+.\database\start_postgres.ps1
+cd frontend; npm run build; cd ..
+Copy-Item -Recurse frontend\dist backend\static -Force
+cd backend
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH=(Get-Location); $env:STATIC_DIR=(Resolve-Path .\static); $env:CORS_ORIGINS="*"
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 ## Tests
 
