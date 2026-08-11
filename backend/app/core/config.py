@@ -18,9 +18,12 @@ def normalize_database_url(url: str) -> str:
     if url.startswith("postgresql://") and "+psycopg2" not in url and "+psycopg" not in url:
         url = "postgresql+psycopg2://" + url[len("postgresql://") :]
 
-    # Railway Postgres requires SSL from the public/private network in most setups.
-    host_markers = ("railway", "rlwy.net", "railway.app", "railway.internal")
-    if any(marker in url for marker in host_markers) and "sslmode=" not in url:
+    # Public Railway proxy hosts need SSL. Private *.railway.internal usually does not
+    # and can fail healthchecks if sslmode=require is forced.
+    public_markers = ("rlwy.net", "railway.app", "proxy.rlwy.net")
+    is_public = any(marker in url for marker in public_markers)
+    is_private = "railway.internal" in url
+    if is_public and not is_private and "sslmode=" not in url:
         sep = "&" if "?" in url else "?"
         url = f"{url}{sep}sslmode=require"
     return url
@@ -38,7 +41,8 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production-seagulls-crm-secret-key-2026"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
-    # development | production
+    # Prefer development unless Railway/dashboard explicitly sets production.
+    # (Avoid baking production into the image so local/default URL checks stay sane.)
     environment: str = "development"
     # Accept common Railway Postgres variable names.
     database_url: str = Field(
@@ -70,13 +74,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _validate_production_database(self) -> "Settings":
+        # Do not crash process import on Railway — runtime DB init reports errors
+        # via /api/health while /health stays up for platform probes.
         if self.environment.lower() == "production":
             url = self.database_url.lower()
             if "127.0.0.1" in url or "localhost" in url:
-                raise ValueError(
-                    "DATABASE_URL is still pointing at localhost. "
-                    "Link Railway PostgreSQL and set DATABASE_URL "
-                    "(or POSTGRES_URL) on the web service."
+                import logging
+
+                logging.getLogger("uvicorn.error").error(
+                    "DATABASE_URL still points at localhost in production. "
+                    "Link Railway PostgreSQL to this service."
                 )
         return self
 

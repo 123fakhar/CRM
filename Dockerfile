@@ -13,7 +13,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     STATIC_DIR=/app/static \
-    ENVIRONMENT=production \
     PORT=8000
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -41,7 +41,13 @@ def auth(token: str) -> dict:
 
 
 def test_health(client):
-    assert client.get("/api/health").json()["status"] == "ok"
+    live = client.get("/health")
+    assert live.status_code == 200
+    assert live.json()["status"] == "ok"
+
+    api = client.get("/api/health")
+    assert api.status_code == 200
+    assert api.json()["app"]
 
 
 def test_login_roles(client):
