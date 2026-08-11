@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+import logging
+import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
@@ -22,25 +25,52 @@ from app.routes import (
 )
 from app.seed import seed_if_empty
 
+logger = logging.getLogger("uvicorn.error")
 settings = get_settings()
 STATIC_DIR = Path(settings.static_dir)
 
 
+def _init_database(max_attempts: int = 20, delay_seconds: float = 2.0) -> None:
+    """Wait for Postgres, create schema, then optional bootstrap/seed."""
+    last_error: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            Base.metadata.create_all(bind=engine)
+            db = SessionLocal()
+            try:
+                seed_if_empty(db)
+            finally:
+                db.close()
+            logger.info("Database ready (attempt %s/%s)", attempt, max_attempts)
+            return
+        except Exception as exc:  # noqa: BLE001 — retry until Railway DB is reachable
+            last_error = exc
+            logger.warning(
+                "Database not ready (attempt %s/%s): %s",
+                attempt,
+                max_attempts,
+                exc,
+            )
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"Database initialization failed after {max_attempts} attempts: {last_error}")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_if_empty(db)
-    finally:
-        db.close()
+    logger.info(
+        "Starting %s env=%s static_dir=%s",
+        settings.app_name,
+        settings.environment,
+        STATIC_DIR,
+    )
+    _init_database()
     yield
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
 
-# Same-origin SPA (FastAPI serves UI + /api) does not need wildcard CORS.
-# If a separate frontend origin is used, set CORS_ORIGINS to that exact origin.
 cors_origins = settings.cors_origin_list
 if cors_origins:
     app.add_middleware(
@@ -62,13 +92,19 @@ app.include_router(audit.router)
 app.include_router(settings_routes.router)
 
 
-@app.get("/api/health")
-def health():
+def _health_payload() -> dict:
     return {
         "status": "ok",
         "app": settings.app_name,
         "environment": settings.environment,
     }
+
+
+@app.get("/health")
+@app.get("/api/health")
+def health():
+    """Unauthenticated liveness probe used by Railway healthchecks."""
+    return JSONResponse(_health_payload())
 
 
 if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
@@ -78,6 +114,9 @@ if STATIC_DIR.exists() and (STATIC_DIR / "index.html").exists():
 
     @app.get("/{full_path:path}")
     def spa_fallback(full_path: str = ""):  # noqa: ARG001
+        # Keep API/health routes registered above this catch-all.
+        if full_path.startswith("api/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         index = STATIC_DIR / "index.html"
         candidate = STATIC_DIR / full_path
         if full_path and candidate.is_file():
