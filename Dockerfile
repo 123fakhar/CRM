@@ -30,5 +30,5 @@ RUN if [ -f /app/start.sh ]; then sed -i 's/\r$//' /app/start.sh && chmod +x /ap
 
 EXPOSE 8000
 
-# Double-quoted shell form so Railway's $PORT expands. Bind all interfaces.
-CMD ["sh", "-c", "echo SeagullsCRM_listen_0.0.0.0_${PORT:-8000} && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start uvicorn, self-probe /health (prints HEALTH_OK/HEALTH_FAIL into Railway logs), then wait.
+CMD ["sh", "-c", "PORT=${PORT:-8000}; echo SeagullsCRM_listen_0.0.0.0_$PORT; python -m uvicorn app.main:app --host 0.0.0.0 --port \"$PORT\" & pid=$!; ok=0; i=0; while [ $i -lt 60 ]; do i=$((i+1)); if curl -fsS \"http://127.0.0.1:$PORT/health\" >/tmp/hc.out 2>/tmp/hc.err; then echo HEALTH_OK; cat /tmp/hc.out; ok=1; break; fi; echo HEALTH_WAIT_$i; sleep 2; done; if [ \"$ok\" -ne 1 ]; then echo HEALTH_FAIL; cat /tmp/hc.err 2>/dev/null; ps aux || true; fi; wait $pid"]
