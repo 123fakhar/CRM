@@ -12,8 +12,11 @@ import type {
   User,
 } from '../types'
 
+/** Empty in local/Railway same-origin; set VITE_API_BASE_URL on Vercel to the FastAPI origin. */
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_ORIGIN}/api`,
 })
 
 api.interceptors.request.use((config) => {
@@ -199,7 +202,7 @@ export async function downloadExport(format: 'csv' | 'xlsx', filters: LeadFilter
   Object.entries(filters).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') params.set(k, String(v))
   })
-  const res = await fetch(`/api/reports/export?${params.toString()}`, {
+  const res = await fetch(`${API_ORIGIN}/api/reports/export?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Export failed')

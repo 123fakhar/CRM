@@ -6,6 +6,8 @@ backend/.env
 backend/static/
 frontend/node_modules/
 frontend/dist/
+frontend/.vercel/
+.vercel/
 .pytest_cache/
 *.pyc
 .DS_Store

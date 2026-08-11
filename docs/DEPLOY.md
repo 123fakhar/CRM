@@ -1,6 +1,50 @@
 # Deployment
 
-## Railway (production target)
+## Vercel (frontend) + Railway (API / Postgres)
+
+Vercel hosts the React SPA. FastAPI + PostgreSQL stay on Railway (Vercel does not run long-lived FastAPI/Postgres well).
+
+```text
+Browser → Vercel (SPA) → VITE_API_BASE_URL → Railway FastAPI → Railway PostgreSQL
+```
+
+**Live frontend:** https://seagulls-crm.vercel.app  
+(also https://frontend-eta-virid-53.vercel.app)
+
+### 1. Deploy frontend to Vercel
+
+From `frontend/` (uses `frontend/vercel.json`):
+
+```powershell
+cd frontend
+npx vercel@latest --prod --yes
+```
+
+Or connect the GitHub repo in the Vercel dashboard with **Root Directory = `frontend`**.
+
+### 2. Vercel environment variable
+
+| Variable | Value |
+|---|---|
+| `VITE_API_BASE_URL` | Public Railway API origin, no trailing slash (e.g. `https://your-service.up.railway.app`) |
+
+Rebuild after changing `VITE_*` vars (they are baked in at build time).
+
+### 3. Railway CORS
+
+On the Railway web service, set `CORS_ORIGINS` to include your Vercel URL(s), e.g.:
+
+```text
+https://seagulls-crm.vercel.app,https://frontend-eta-virid-53.vercel.app
+```
+
+Or temporarily `*` while validating.
+
+### 4. Postgres
+
+Reuse the existing Railway PostgreSQL `DATABASE_URL` on the Railway API service. Do not create a new DB unless Railway Postgres is unavailable (then Neon/Supabase + update Railway `DATABASE_URL`).
+
+## Railway (API + optional all-in-one Docker)
 
 Architecture:
 
